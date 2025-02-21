@@ -22,22 +22,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             <Link href="/">
-              <a className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground">
-                <LayoutDashboard className="h-5 w-5" />
-                <span>Dashboard</span>
-              </a>
+              <Button variant="ghost" className="w-full justify-start">
+                <LayoutDashboard className="h-5 w-5 mr-3" />
+                Dashboard
+              </Button>
             </Link>
             <Link href="/workflows">
-              <a className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground">
-                <GitBranch className="h-5 w-5" />
-                <span>Workflows</span>
-              </a>
+              <Button variant="ghost" className="w-full justify-start">
+                <GitBranch className="h-5 w-5 mr-3" />
+                Workflows
+              </Button>
             </Link>
             <Link href="/sop-generator">
-              <a className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground">
-                <FileText className="h-5 w-5" />
-                <span>SOP Generator</span>
-              </a>
+              <Button variant="ghost" className="w-full justify-start">
+                <FileText className="h-5 w-5 mr-3" />
+                SOP Generator
+              </Button>
             </Link>
           </nav>
           <div className="p-4 border-t">
