@@ -24,12 +24,13 @@ interface GenerateSOPResponse {
 export async function generateSOP(description: string): Promise<GenerateSOPResponse> {
   try {
     const systemPrompt = `You are an expert at creating detailed Standard Operating Procedures (SOPs) for finance tasks.
-    Generate a response in the following JSON format:
-    {
-      "title": "Clear title for the SOP",
-      "description": "Brief overview of the procedure",
-      "steps": ["Step 1: Action", "Step 2: Action", ...]
-    }`;
+    Format your response to match exactly:
+    Title: <title>
+    Description: <description>
+    Steps:
+    1. <step1>
+    2. <step2>
+    etc.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4",
@@ -49,17 +50,26 @@ export async function generateSOP(description: string): Promise<GenerateSOPRespo
       throw new Error("No content in OpenAI response");
     }
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
 
-    // Validate response structure
-    if (!result.title || !result.description || !Array.isArray(result.steps)) {
+    // Parse the formatted response
+    const titleMatch = content.match(/Title: (.+)/);
+    const descriptionMatch = content.match(/Description: (.+)/);
+    const stepsMatch = content.match(/Steps:\n((?:\d+\. .+\n?)+)/);
+
+    if (!titleMatch || !descriptionMatch || !stepsMatch) {
       throw new Error("Invalid response format from OpenAI");
     }
 
+    const steps = stepsMatch[1]
+      .split('\n')
+      .filter(step => step.trim())
+      .map(step => step.replace(/^\d+\.\s*/, '').trim());
+
     return {
-      title: result.title,
-      description: result.description,
-      steps: result.steps.map((step: string) => step.trim()).filter(Boolean)
+      title: titleMatch[1].trim(),
+      description: descriptionMatch[1].trim(),
+      steps: steps
     };
   } catch (error) {
     logger.error(`OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
