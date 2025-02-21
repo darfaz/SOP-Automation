@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI client
+export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function generateSOP(task: string): Promise<{
   title: string;
@@ -20,7 +20,7 @@ export async function generateSOP(task: string): Promise<{
   Make sure each step is clear, actionable and includes all necessary details.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4",
     messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
   });
