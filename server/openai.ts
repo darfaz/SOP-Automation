@@ -8,22 +8,52 @@ export async function generateSOP(task: string): Promise<{
   description: string;
   steps: string[];
 }> {
-  const prompt = `Generate a detailed Standard Operating Procedure (SOP) for the following finance task: "${task}"
-
-  Please provide the output as a JSON object with the following structure:
-  {
-    "title": "SOP title",
-    "description": "Brief overview of the procedure",
-    "steps": ["Step 1", "Step 2", "Step 3", ...]
-  }
-
-  Make sure each step is clear, actionable and includes all necessary details.`;
+  const systemPrompt = `You are an expert at creating detailed Standard Operating Procedures (SOPs) for finance tasks.
+    Format your response to match exactly:
+    Title: <title>
+    Description: <description>
+    Steps:
+    1. <step1>
+    2. <step2>
+    etc.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: systemPrompt
+      },
+      { 
+        role: "user", 
+        content: task 
+      }
+    ]
   });
 
-  return JSON.parse(response.choices[0].message.content || "");
+  if (!response.choices[0].message.content) {
+    throw new Error("No content in OpenAI response");
+  }
+
+  const content = response.choices[0].message.content;
+
+  // Parse the formatted response
+  const titleMatch = content.match(/Title: (.+)/);
+  const descriptionMatch = content.match(/Description: (.+)/);
+  const stepsMatch = content.match(/Steps:\n((?:\d+\. .+\n?)+)/);
+
+  if (!titleMatch || !descriptionMatch || !stepsMatch) {
+    throw new Error("Invalid response format from OpenAI");
+  }
+
+  const steps = stepsMatch[1]
+    .split('\n')
+    .filter(step => step.trim())
+    .map(step => step.replace(/^\d+\.\s*/, '').trim());
+
+  return {
+    title: titleMatch[1].trim(),
+    description: descriptionMatch[1].trim(),
+    steps: steps
+  };
 }
