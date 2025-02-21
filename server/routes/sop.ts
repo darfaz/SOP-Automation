@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
 import { insertSOPSchema } from "@shared/schema";
-import { openai } from "../openai";
+import { generateSOP } from "../services/ai";
 import { storage } from "../storage";
 
 const router = Router();
 
 // Input validation schema with zod
-const generateSOPRequestSchema = insertSOPSchema.extend({
+const generateSOPRequestSchema = z.object({
   industry: z.string(),
   process: z.string(),
   requirements: z.string().array(),
@@ -24,30 +24,17 @@ router.post("/api/sops", async (req, res, next) => {
 
     const input = generateSOPRequestSchema.parse(req.body);
 
-    // Generate SOP steps using OpenAI
-    const prompt = `Create a detailed Standard Operating Procedure (SOP) for ${input.process} in the ${input.industry} industry.
-    Requirements: ${input.requirements.join(", ")}
-
-    Generate a detailed step-by-step procedure.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { 
-          role: "system", 
-          content: "You are an expert at creating detailed Standard Operating Procedures (SOPs). Format output as clear, numbered steps." 
-        },
-        { role: "user", content: prompt }
-      ],
-    });
-
-    const steps = completion.choices[0].message.content?.split("\n").filter(step => step.trim().length > 0) || [];
+    // Generate SOP using AI service
+    const aiResponse = await generateSOP(
+      `Create a detailed Standard Operating Procedure (SOP) for ${input.process} in the ${input.industry} industry.
+      Requirements: ${input.requirements.join(", ")}`
+    );
 
     // Create SOP in database
     const sop = await storage.createSOP({
-      title: input.title,
-      description: input.description,
-      steps: steps,
+      title: aiResponse.title,
+      description: aiResponse.description,
+      steps: aiResponse.steps,
       createdBy: req.user.id,
     });
 
