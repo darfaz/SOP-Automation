@@ -76,7 +76,7 @@ export default function SOPGenerator() {
 
         <div>
           <h3 className="text-xl font-semibold mb-4">Your SOPs</h3>
-          
+
           {isLoading ? (
             <div className="space-y-4">
               {Array(2).fill(0).map((_, i) => (
@@ -104,10 +104,15 @@ export default function SOPGenerator() {
                     </div>
                   </CardHeader>
                   <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {sop.description}
+                    </p>
                     <ScrollArea className="h-[200px] w-full rounded-md border p-4">
-                      <div className="prose prose-sm max-w-none">
-                        {sop.content.split('\n').map((line, i) => (
-                          <p key={i} className="mb-2">{line}</p>
+                      <div className="space-y-2">
+                        {sop.steps.map((step, index) => (
+                          <p key={index} className="text-sm">
+                            {index + 1}. {step}
+                          </p>
                         ))}
                       </div>
                     </ScrollArea>

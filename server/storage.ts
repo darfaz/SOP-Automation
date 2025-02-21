@@ -1,45 +1,44 @@
 import { IStorage } from "./storage";
 import createMemoryStore from "memorystore";
 import session from "express-session";
-import type { User, Workflow, SOP, InsertUser, InsertWorkflow, InsertSOP } from "@shared/schema";
+import type { User, SOP, Automation, InsertUser, InsertSOP, InsertAutomation } from "@shared/schema";
+import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   // Users
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
-  // Workflows
-  getWorkflowsByUserId(userId: number): Promise<Workflow[]>;
-  createWorkflow(workflow: InsertWorkflow & { userId: number; status: string }): Promise<Workflow>;
-  
+
   // SOPs
-  getSOPsByUserId(userId: number): Promise<SOP[]>;
-  createSOP(sop: InsertSOP & { userId: number }): Promise<SOP>;
-  
+  getSOPsByUserId(userId: string): Promise<SOP[]>;
+  createSOP(sop: InsertSOP & { createdBy: string }): Promise<SOP>;
+
+  // Automations
+  getAutomationsByUserId(userId: string): Promise<Automation[]>;
+  createAutomation(automation: InsertAutomation & { userId: string }): Promise<Automation>;
+
   sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private workflows: Map<number, Workflow>;
-  private sops: Map<number, SOP>;
-  private nextId: number;
+  private users: Map<string, User>;
+  private sops: Map<string, SOP>;
+  private automations: Map<string, Automation>;
   sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
-    this.workflows = new Map();
     this.sops = new Map();
-    this.nextId = 1;
+    this.automations = new Map();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
   }
 
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
 
@@ -50,39 +49,20 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.nextId++;
+    const id = crypto.randomUUID();
     const user = { ...insertUser, id };
     this.users.set(id, user);
     return user;
   }
 
-  async getWorkflowsByUserId(userId: number): Promise<Workflow[]> {
-    return Array.from(this.workflows.values()).filter(
-      (workflow) => workflow.userId === userId,
-    );
-  }
-
-  async createWorkflow(
-    workflow: InsertWorkflow & { userId: number; status: string },
-  ): Promise<Workflow> {
-    const id = this.nextId++;
-    const newWorkflow = {
-      ...workflow,
-      id,
-      createdAt: new Date(),
-    };
-    this.workflows.set(id, newWorkflow);
-    return newWorkflow;
-  }
-
-  async getSOPsByUserId(userId: number): Promise<SOP[]> {
+  async getSOPsByUserId(userId: string): Promise<SOP[]> {
     return Array.from(this.sops.values()).filter(
-      (sop) => sop.userId === userId,
+      (sop) => sop.createdBy === userId,
     );
   }
 
-  async createSOP(sop: InsertSOP & { userId: number }): Promise<SOP> {
-    const id = this.nextId++;
+  async createSOP(sop: InsertSOP & { createdBy: string }): Promise<SOP> {
+    const id = crypto.randomUUID();
     const newSOP = {
       ...sop,
       id,
@@ -90,6 +70,23 @@ export class MemStorage implements IStorage {
     };
     this.sops.set(id, newSOP);
     return newSOP;
+  }
+
+  async getAutomationsByUserId(userId: string): Promise<Automation[]> {
+    return Array.from(this.automations.values()).filter(
+      (automation) => automation.userId === userId,
+    );
+  }
+
+  async createAutomation(automation: InsertAutomation & { userId: string }): Promise<Automation> {
+    const id = crypto.randomUUID();
+    const newAutomation = {
+      ...automation,
+      id,
+      createdAt: new Date(),
+    };
+    this.automations.set(id, newAutomation);
+    return newAutomation;
   }
 }
 
