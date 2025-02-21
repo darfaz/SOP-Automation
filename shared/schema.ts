@@ -40,6 +40,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
   company: true,
 });
 
+export const loginSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+});
+
 export const insertSOPSchema = createInsertSchema(sops).pick({
   title: true,
   description: true,
@@ -61,3 +66,4 @@ export type SOP = typeof sops.$inferSelect;
 export type Automation = typeof automations.$inferSelect;
 export type InsertSOP = z.infer<typeof insertSOPSchema>;
 export type InsertAutomation = z.infer<typeof insertAutomationSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
