@@ -6,7 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, loginSchema } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
@@ -14,7 +14,7 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
 
   const loginForm = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -26,6 +26,9 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+      email: "",
+      name: "",
+      company: "",
     },
   });
 
@@ -49,7 +52,7 @@ export default function AuthPage() {
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))}>
@@ -95,6 +98,32 @@ export default function AuthPage() {
                     <div className="space-y-4">
                       <FormField
                         control={registerForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
                         name="username"
                         render={({ field }) => (
                           <FormItem>
@@ -119,6 +148,19 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={registerForm.control}
+                        name="company"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                         {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Register
@@ -131,7 +173,7 @@ export default function AuthPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="hidden lg:flex flex-1 items-center justify-center bg-muted">
         <div className="max-w-md p-8">
           <h2 className="text-3xl font-bold mb-4">Streamline Your Finance Operations</h2>
