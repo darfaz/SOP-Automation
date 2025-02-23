@@ -1,21 +1,32 @@
 type LogLevel = 'info' | 'warn' | 'error';
 
 class Logger {
-  private log(level: LogLevel, message: string) {
+  private formatMessage(level: LogLevel, message: string, context?: Record<string, any>): string {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
+    let formattedMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+
+    if (context) {
+      formattedMessage += `\nContext: ${JSON.stringify(context, null, 2)}`;
+    }
+
+    return formattedMessage;
   }
 
-  info(message: string) {
-    this.log('info', message);
+  private log(level: LogLevel, message: string, context?: Record<string, any>) {
+    const formattedMessage = this.formatMessage(level, message, context);
+    console.log(formattedMessage);
   }
 
-  warn(message: string) {
-    this.log('warn', message);
+  info(message: string, context?: Record<string, any>) {
+    this.log('info', message, context);
   }
 
-  error(message: string) {
-    this.log('error', message);
+  warn(message: string, context?: Record<string, any>) {
+    this.log('warn', message, context);
+  }
+
+  error(message: string, context?: Record<string, any>) {
+    this.log('error', message, context);
   }
 }
 
