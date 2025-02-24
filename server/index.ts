@@ -54,23 +54,28 @@ const startServer = async (port: number): Promise<void> => {
     });
 
     if (app.get("env") === "development") {
+      log("Setting up Vite middleware for development");
       await setupVite(app, server);
     } else {
+      log("Setting up static file serving for production");
       serveStatic(app);
     }
 
     await new Promise<void>((resolve, reject) => {
+      log(`Attempting to start server on port ${port}...`);
       server.listen({
         port,
         host: "0.0.0.0",
         reusePort: true,
       }, () => {
-        log(`serving on port ${port}`);
+        log(`Server successfully started on port ${port}`);
         resolve();
       }).on('error', (err: any) => {
         if (err.code === 'EADDRINUSE') {
+          log(`Error: Port ${port} is already in use`);
           reject(new Error(`Port ${port} is already in use`));
         } else {
+          log(`Error starting server: ${err.message}`);
           reject(err);
         }
       });
@@ -87,7 +92,8 @@ const startServer = async (port: number): Promise<void> => {
 // Start the server
 (async () => {
   try {
-    await startServer(3000); 
+    // Use port 5000 as required by Replit
+    await startServer(5000);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
