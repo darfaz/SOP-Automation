@@ -25,6 +25,11 @@ export default function SOPGenerator() {
     message: string;
   }>({
     queryKey: ["/api/automations/suggest", selectedSopId],
+    queryFn: async () => {
+      if (!selectedSopId) return { suggestions: [], message: "" };
+      const res = await apiRequest("GET", `/api/automations/suggest/${selectedSopId}`);
+      return res.json();
+    },
     enabled: !!selectedSopId,
   });
 
@@ -95,7 +100,7 @@ export default function SOPGenerator() {
                 onChange={(e) => setTask(e.target.value)}
                 className="flex-1"
               />
-              <Button 
+              <Button
                 onClick={() => generateMutation.mutate(task)}
                 disabled={!task || generateMutation.isPending}
               >
