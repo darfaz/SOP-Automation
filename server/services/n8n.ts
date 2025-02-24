@@ -17,9 +17,55 @@ axiosRetry(n8nAxios, {
   },
   retryCondition: (error) => {
     return axiosRetry.isNetworkOrIdempotentRequestError(error) || 
-           (error.response && error.response.status >= 500);
+           (error.response?.status >= 500) || false;
   }
 });
+
+interface AutomationPattern {
+  keywords: string[];
+  name: string;
+  description: string;
+  nodes: string[];
+  setupComplexity: 'low' | 'medium' | 'high';
+}
+
+const AUTOMATION_PATTERNS: AutomationPattern[] = [
+  {
+    keywords: ['email', 'send', 'notify', 'message'],
+    name: 'Email Notification',
+    description: 'Automatically send email notifications',
+    nodes: ['Email', 'Gmail'],
+    setupComplexity: 'low'
+  },
+  {
+    keywords: ['slack', 'chat', 'message', 'notify', 'team'],
+    name: 'Slack Integration',
+    description: 'Send notifications and updates to Slack channels',
+    nodes: ['Slack'],
+    setupComplexity: 'low'
+  },
+  {
+    keywords: ['spreadsheet', 'excel', 'data', 'record', 'track'],
+    name: 'Spreadsheet Automation',
+    description: 'Automatically update and manage spreadsheet data',
+    nodes: ['Google Sheets', 'Excel Online'],
+    setupComplexity: 'medium'
+  },
+  {
+    keywords: ['calendar', 'schedule', 'meeting', 'appointment'],
+    name: 'Calendar Management',
+    description: 'Automate calendar events and scheduling',
+    nodes: ['Google Calendar', 'Outlook Calendar'],
+    setupComplexity: 'medium'
+  },
+  {
+    keywords: ['form', 'survey', 'collect', 'input'],
+    name: 'Form Processing',
+    description: 'Automate form submission handling and data collection',
+    nodes: ['Google Forms', 'TypeForm', 'Webhook'],
+    setupComplexity: 'medium'
+  }
+];
 
 export class N8nService {
   private connected: boolean = false;
@@ -27,17 +73,17 @@ export class N8nService {
 
   constructor() {
     this.apiKey = process.env.N8N_API_KEY;
-    console.log("[n8n] Initializing service with API key:", this.apiKey ? "Present" : "Missing");
+    logger.info("[n8n] Initializing service with API key:", this.apiKey ? "Present" : "Missing");
   }
 
   private async checkConnection(): Promise<void> {
     if (!this.apiKey) {
-      console.log("[n8n] Error: API Key not configured");
+      logger.error("[n8n] Error: API Key not configured");
       throw new Error("n8n API Key not configured");
     }
 
     try {
-      console.log("[n8n] Attempting to connect to API...");
+      logger.info("[n8n] Attempting to connect to API...");
       await n8nAxios.get("/workflows", {
         headers: {
           "X-N8N-API-KEY": this.apiKey,
@@ -45,11 +91,11 @@ export class N8nService {
         }
       });
       this.connected = true;
-      console.log("[n8n] Successfully connected to API");
+      logger.info("[n8n] Successfully connected to API");
     } catch (error) {
       this.connected = false;
       if (axios.isAxiosError(error)) {
-        console.log("[n8n] Connection failed:", {
+        logger.error("[n8n] Connection failed:", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message
@@ -59,47 +105,59 @@ export class N8nService {
     }
   }
 
+  private analyzeStep(step: string): AutomationPattern[] {
+    const lowerStep = step.toLowerCase();
+    return AUTOMATION_PATTERNS.filter(pattern => 
+      pattern.keywords.some(keyword => lowerStep.includes(keyword))
+    );
+  }
+
   public async suggestAutomations(sop: SOP): Promise<Partial<Automation>[]> {
     if (!this.connected) {
-      console.log("[n8n] No active connection, attempting to connect...");
+      logger.info("[n8n] No active connection, attempting to connect...");
       await this.checkConnection();
     }
 
     try {
-      console.log("[n8n] Analyzing SOP for automation suggestions:", sop.id);
+      logger.info("[n8n] Analyzing SOP for automation suggestions:", sop.id);
 
-      // Map SOP steps to potential n8n nodes based on content analysis
-      const suggestedNodes = sop.steps.map(step => {
-        const lowerStep = step.toLowerCase();
-        let nodes = [];
-        
-        if (lowerStep.includes("email") || lowerStep.includes("send")) {
-          nodes.push("Email");
-        }
-        if (lowerStep.includes("slack") || lowerStep.includes("message")) {
-          nodes.push("Slack");
-        }
-        if (lowerStep.includes("data") || lowerStep.includes("spreadsheet")) {
-          nodes.push("Google Sheets");
-        }
-        
-        return nodes;
-      }).flat();
-
-      // Create unique suggestions based on identified nodes
-      const uniqueNodes = Array.from(new Set(suggestedNodes));
-      
-      return uniqueNodes.map(node => ({
-        name: `${sop.title} - ${node} Integration`,
-        workflowId: "", // Will be set when actually created
-        status: "suggested",
-        connectedApps: [node],
-        sopId: sop.id
+      // Analyze each step for automation opportunities
+      const stepAnalysis = sop.steps.map((step, index) => ({
+        step,
+        index,
+        patterns: this.analyzeStep(step)
       }));
+
+      // Group suggestions by automation type to avoid duplicates
+      const uniqueSuggestions = new Map<string, AutomationPattern>();
+      stepAnalysis.forEach(analysis => {
+        analysis.patterns.forEach(pattern => {
+          if (!uniqueSuggestions.has(pattern.name)) {
+            uniqueSuggestions.set(pattern.name, pattern);
+          }
+        });
+      });
+
+      // Convert suggestions to automation objects
+      const suggestions = Array.from(uniqueSuggestions.values()).map(pattern => ({
+        name: `${sop.title} - ${pattern.name}`,
+        description: `${pattern.description} for steps: ${stepAnalysis
+          .filter(analysis => analysis.patterns.some(p => p.name === pattern.name))
+          .map(analysis => analysis.index + 1)
+          .join(', ')}`,
+        status: "suggested",
+        workflowId: null,
+        connectedApps: pattern.nodes,
+        sopId: sop.id,
+        setupComplexity: pattern.setupComplexity
+      }));
+
+      logger.info(`[n8n] Generated ${suggestions.length} automation suggestions for SOP ${sop.id}`);
+      return suggestions;
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.log("[n8n] Failed to analyze SOP:", {
+        logger.error("[n8n] Failed to analyze SOP:", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message
@@ -115,10 +173,10 @@ export class N8nService {
     }
 
     try {
-      // Instead of creating an actual workflow, we'll simulate it for testing
-      // In production, this would make a real API call to n8n
-      console.log("[n8n] Creating simulated workflow for testing");
+      logger.info("[n8n] Creating automation workflow for SOP:", sop.id);
 
+      // For now, we'll create a simulated workflow
+      // In production, this would make actual API calls to n8n
       return {
         id: crypto.randomUUID(),
         name: `${sop.title} Automation`,
@@ -131,7 +189,7 @@ export class N8nService {
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.log("[n8n] Failed to create workflow:", {
+        logger.error("[n8n] Failed to create workflow:", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message

@@ -14,6 +14,7 @@ export interface IStorage {
 
   // SOPs
   getSOPsByUserId(userId: string): Promise<SOP[]>;
+  getSOP(id: string): Promise<SOP | undefined>;
   createSOP(sop: InsertSOP & { createdBy: string }): Promise<SOP>;
 
   // Automations
@@ -55,6 +56,10 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  async getSOP(id: string): Promise<SOP | undefined> {
+    return this.sops.get(id);
+  }
+
   async getSOPsByUserId(userId: string): Promise<SOP[]> {
     return Array.from(this.sops.values()).filter(
       (sop) => sop.createdBy === userId,
@@ -84,6 +89,7 @@ export class MemStorage implements IStorage {
       ...automation,
       id,
       createdAt: new Date(),
+      workflowId: automation.workflowId || null
     };
     this.automations.set(id, newAutomation);
     return newAutomation;

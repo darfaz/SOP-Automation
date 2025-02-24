@@ -25,7 +25,10 @@ router.get("/api/automations/suggest/:sopId", async (req, res, next) => {
     }
 
     const suggestions = await n8nService.suggestAutomations(sop);
-    res.json(suggestions);
+    res.json({ 
+      suggestions,
+      message: `Found ${suggestions.length} potential automation opportunities`
+    });
   } catch (error) {
     logger.error(`Error suggesting automations: ${error instanceof Error ? error.message : 'Unknown error'}`);
     next(error);
@@ -39,15 +42,30 @@ router.post("/api/automations", async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const sop = await storage.getSOP(req.body.sopId);
+    const schema = z.object({
+      sopId: z.string(),
+      connectedApps: z.array(z.string())
+    });
+
+    const validatedData = schema.parse(req.body);
+    const sop = await storage.getSOP(validatedData.sopId);
+
     if (!sop) {
       return res.status(404).json({ message: "SOP not found" });
     }
 
-    const automation = await n8nService.createAutomation(sop, req.body.connectedApps);
+    if (sop.createdBy !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const automation = await n8nService.createAutomation(sop, validatedData.connectedApps);
 
     const storedAutomation = await storage.createAutomation({
-      ...automation,
+      name: automation.name,
+      status: automation.status,
+      connectedApps: automation.connectedApps,
+      sopId: automation.sopId,
+      workflowId: automation.workflowId,
       userId: req.user.id
     });
 
