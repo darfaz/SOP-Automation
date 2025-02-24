@@ -23,7 +23,7 @@ export const sops = pgTable("sops", {
 export const automations = pgTable("automations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  zapId: text("zap_id").notNull(),
+  workflowId: text("workflow_id").notNull(),
   status: text("status").notNull(),
   connectedApps: text("connected_apps").array().notNull(),
   sopId: uuid("sop_id").notNull().references(() => sops.id),
@@ -53,7 +53,7 @@ export const insertSOPSchema = createInsertSchema(sops).pick({
 
 export const insertAutomationSchema = createInsertSchema(automations).pick({
   name: true,
-  zapId: true,
+  workflowId: true,
   status: true,
   connectedApps: true,
   sopId: true,

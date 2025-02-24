@@ -16,11 +16,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-const zapApps = [
-  { value: "slack", label: "Slack" },
-  { value: "gmail", label: "Gmail" },
-  { value: "quickbooks", label: "QuickBooks" },
-  { value: "xero", label: "Xero" },
+const n8nNodes = [
+  { value: "Email", label: "Email" },
+  { value: "Slack", label: "Slack" },
+  { value: "GoogleSheets", label: "Google Sheets" },
+  { value: "Trello", label: "Trello" },
+  { value: "Github", label: "GitHub" },
 ];
 
 export default function Workflows() {
@@ -31,7 +32,7 @@ export default function Workflows() {
     resolver: zodResolver(insertAutomationSchema),
     defaultValues: {
       name: "",
-      zapId: "",
+      workflowId: "",  // Changed from zapId
       status: "pending",
       connectedApps: [],
       sopId: "",
@@ -53,7 +54,7 @@ export default function Workflows() {
       form.reset();
       toast({
         title: "Success",
-        description: "Automation created successfully",
+        description: "Automation workflow created successfully",
       });
     },
     onError: (error: Error) => {
@@ -70,9 +71,9 @@ export default function Workflows() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Automations</h2>
+            <h2 className="text-3xl font-bold tracking-tight">n8n Workflows</h2>
             <p className="text-muted-foreground">
-              Connect your SOPs to your favorite tools
+              Automate your SOPs with n8n workflows
             </p>
           </div>
 
@@ -80,12 +81,12 @@ export default function Workflows() {
             <DialogTrigger asChild>
               <Button>
                 <PlusCircle className="h-4 w-4 mr-2" />
-                New Automation
+                New Workflow
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Automation</DialogTitle>
+                <DialogTitle>Create New n8n Workflow</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -94,22 +95,9 @@ export default function Workflows() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Workflow Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Weekly Invoice Reminder Automation" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="zapId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Zap ID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="zap_abc123" {...field} />
+                          <Input placeholder="Weekly Invoice Processing Workflow" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -120,33 +108,33 @@ export default function Workflows() {
                     name="connectedApps"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Connected Apps</FormLabel>
+                        <FormLabel>n8n Nodes</FormLabel>
                         <Select 
                           onValueChange={(value) => field.onChange([...field.value, value])}
                           value={field.value[field.value.length - 1] || ""}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select apps to connect" />
+                              <SelectValue placeholder="Select nodes to connect" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {zapApps.map((app) => (
-                              <SelectItem key={app.value} value={app.value}>
-                                {app.label}
+                            {n8nNodes.map((node) => (
+                              <SelectItem key={node.value} value={node.value}>
+                                {node.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {field.value.map((app: string) => (
+                          {field.value.map((node: string) => (
                             <Button
-                              key={app}
+                              key={node}
                               variant="secondary"
                               size="sm"
-                              onClick={() => field.onChange(field.value.filter((a: string) => a !== app))}
+                              onClick={() => field.onChange(field.value.filter((n: string) => n !== node))}
                             >
-                              {app} ×
+                              {node} ×
                             </Button>
                           ))}
                         </div>
@@ -156,7 +144,7 @@ export default function Workflows() {
                   />
                   <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                     {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create Automation
+                    Create Workflow
                   </Button>
                 </form>
               </Form>
@@ -174,7 +162,7 @@ export default function Workflows() {
           <Card>
             <CardContent className="text-center py-6">
               <PlusCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No automations yet. Create your first one!</p>
+              <p className="text-muted-foreground">No workflows yet. Create your first n8n workflow!</p>
             </CardContent>
           </Card>
         ) : (
@@ -187,11 +175,11 @@ export default function Workflows() {
                 <CardContent>
                   <div className="space-y-4">
                     <div>
-                      <div className="text-sm font-medium">Connected Apps</div>
+                      <div className="text-sm font-medium">Connected Nodes</div>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {automation.connectedApps.map((app) => (
-                          <Button key={app} variant="secondary" size="sm" disabled>
-                            {app}
+                        {automation.connectedApps.map((node) => (
+                          <Button key={node} variant="secondary" size="sm" disabled>
+                            {node}
                           </Button>
                         ))}
                       </div>

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { zapierService } from "../services/zapier";
+import { n8nService } from "../services/n8n";
 import { logger } from "../logger";
 
 const router = Router();
@@ -15,7 +15,7 @@ router.get("/api/automations/suggest/:sopId", async (req, res, next) => {
 
     const sopId = req.params.sopId;
     const sop = await storage.getSOP(sopId);
-    
+
     if (!sop) {
       return res.status(404).json({ message: "SOP not found" });
     }
@@ -24,7 +24,7 @@ router.get("/api/automations/suggest/:sopId", async (req, res, next) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const suggestions = await zapierService.suggestAutomations(sop);
+    const suggestions = await n8nService.suggestAutomations(sop);
     res.json(suggestions);
   } catch (error) {
     logger.error(`Error suggesting automations: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -39,12 +39,19 @@ router.post("/api/automations", async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const automation = await storage.createAutomation({
-      ...req.body,
+    const sop = await storage.getSOP(req.body.sopId);
+    if (!sop) {
+      return res.status(404).json({ message: "SOP not found" });
+    }
+
+    const automation = await n8nService.createAutomation(sop, req.body.connectedApps);
+
+    const storedAutomation = await storage.createAutomation({
+      ...automation,
       userId: req.user.id
     });
 
-    res.status(201).json(automation);
+    res.status(201).json(storedAutomation);
   } catch (error) {
     logger.error(`Error creating automation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     next(error);
