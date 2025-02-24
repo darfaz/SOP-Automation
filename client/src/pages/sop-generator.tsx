@@ -6,23 +6,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileText, Calendar } from "lucide-react";
+import { Loader2, FileText, Calendar, Zap } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { SOP } from "@shared/schema";
+import type { SOP, Automation } from "@shared/schema";
 
 export default function SOPGenerator() {
   const [task, setTask] = useState("");
+  const [selectedSopId, setSelectedSopId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: sops, isLoading } = useQuery<SOP[]>({
+  const { data: sops, isLoading: sopsLoading } = useQuery<SOP[]>({
     queryKey: ["/api/sops"],
+  });
+
+  const { data: automationSuggestions, isLoading: suggestionsLoading } = useQuery<{
+    suggestions: Partial<Automation>[];
+    message: string;
+  }>({
+    queryKey: ["/api/automations/suggest", selectedSopId],
+    enabled: !!selectedSopId,
   });
 
   const generateMutation = useMutation({
     mutationFn: async (task: string) => {
       const res = await apiRequest("POST", "/api/sops/generate", { task });
-      return res.json();
+      const sop = await res.json();
+      setSelectedSopId(sop.id); // Set the selected SOP ID to trigger suggestions query
+      return sop;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sops"] });
@@ -41,13 +52,34 @@ export default function SOPGenerator() {
     },
   });
 
+  const createAutomationMutation = useMutation({
+    mutationFn: async ({ sopId, connectedApps }: { sopId: string; connectedApps: string[] }) => {
+      const res = await apiRequest("POST", "/api/automations", { sopId, connectedApps });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/automations"] });
+      toast({
+        title: "Success",
+        description: "Automation workflow created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">SOP Generator</h2>
           <p className="text-muted-foreground">
-            Create AI-powered Standard Operating Procedures for your financial tasks
+            Create AI-powered Standard Operating Procedures with automation suggestions
           </p>
         </div>
 
@@ -58,7 +90,7 @@ export default function SOPGenerator() {
           <CardContent>
             <div className="flex gap-4">
               <Input
-                placeholder="Describe your financial task (e.g., Send weekly invoice reminders)"
+                placeholder="Describe your task (e.g., Send weekly invoice reminders)"
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 className="flex-1"
@@ -77,7 +109,7 @@ export default function SOPGenerator() {
         <div>
           <h3 className="text-xl font-semibold mb-4">Your SOPs</h3>
 
-          {isLoading ? (
+          {sopsLoading ? (
             <div className="space-y-4">
               {Array(2).fill(0).map((_, i) => (
                 <div key={i} className="h-[200px] rounded-lg animate-pulse bg-muted" />
@@ -107,7 +139,7 @@ export default function SOPGenerator() {
                     <p className="text-sm text-muted-foreground mb-4">
                       {sop.description}
                     </p>
-                    <ScrollArea className="h-[200px] w-full rounded-md border p-4">
+                    <ScrollArea className="h-[200px] w-full rounded-md border p-4 mb-4">
                       <div className="space-y-2">
                         {sop.steps.map((step, index) => (
                           <p key={index} className="text-sm">
@@ -116,6 +148,57 @@ export default function SOPGenerator() {
                         ))}
                       </div>
                     </ScrollArea>
+
+                    {/* Automation Suggestions Section */}
+                    {selectedSopId === sop.id && (
+                      <div className="mt-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Zap className="h-5 w-5" />
+                          <h4 className="font-semibold">Automation Suggestions</h4>
+                        </div>
+
+                        {suggestionsLoading ? (
+                          <div className="h-[100px] rounded-lg animate-pulse bg-muted" />
+                        ) : automationSuggestions?.suggestions && automationSuggestions.suggestions.length > 0 ? (
+                          <div className="space-y-2">
+                            {automationSuggestions.suggestions.map((suggestion, index) => (
+                              <Card key={index}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h5 className="font-medium">{suggestion.name}</h5>
+                                      <p className="text-sm text-muted-foreground">
+                                        {suggestion.description}
+                                      </p>
+                                      <p className="text-sm mt-1">
+                                        Connected Apps: {suggestion.connectedApps?.join(", ")}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => createAutomationMutation.mutate({
+                                        sopId: sop.id,
+                                        connectedApps: suggestion.connectedApps || []
+                                      })}
+                                      disabled={createAutomationMutation.isPending}
+                                    >
+                                      {createAutomationMutation.isPending && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      )}
+                                      Enable
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No automation suggestions available for this SOP.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
