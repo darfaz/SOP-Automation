@@ -22,19 +22,11 @@ router.post("/api/sops", async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const input = generateSOPRequestSchema.parse(req.body);
-
-    // Generate SOP using AI service
-    const aiResponse = await generateSOP(
-      `Create a detailed Standard Operating Procedure (SOP) for ${input.process} in the ${input.industry} industry.
-      Requirements: ${input.requirements.join(", ")}`
-    );
+    const input = insertSOPSchema.parse(req.body);
 
     // Create SOP in database
     const sop = await storage.createSOP({
-      title: aiResponse.title,
-      description: aiResponse.description,
-      steps: aiResponse.steps,
+      ...input,
       createdBy: req.user.id,
     });
 
