@@ -5,18 +5,18 @@ import { type Automation, type SOP } from "@shared/schema";
 
 // Configure axios retry logic
 const zapierAxios = axios.create({
-  baseURL: "https://api.zapier.com/v2",
+  baseURL: "https://platform.zapier.com/api/v2", 
   timeout: 10000,
 });
 
-axiosRetry(zapierAxios, {
+axiosRetry(zapierAxios, { 
   retries: 3,
   retryDelay: (retryCount) => {
-    return Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff
+    return Math.min(1000 * Math.pow(2, retryCount), 10000); 
   },
   retryCondition: (error) => {
     return axiosRetry.isNetworkOrIdempotentRequestError(error) || 
-           (error.response?.status !== undefined && error.response.status >= 500);
+           (error.response && error.response.status >= 500);
   }
 });
 
@@ -26,7 +26,6 @@ export class ZapierService {
 
   constructor() {
     this.deployKey = process.env.ZAPIER_DEPLOY_KEY;
-    // Add initial connection log
     console.log("[Zapier] Initializing service with deploy key:", this.deployKey ? "Present" : "Missing");
   }
 
@@ -38,7 +37,7 @@ export class ZapierService {
 
     try {
       console.log("[Zapier] Attempting to connect to API...");
-      await zapierAxios.get("/deploy/status", {
+      await zapierAxios.get("/api-keys/verify", {  
         headers: {
           "X-Deploy-Key": this.deployKey,
           "Content-Type": "application/json"
@@ -68,7 +67,7 @@ export class ZapierService {
     try {
       console.log("[Zapier] Requesting automation suggestions for SOP:", sop.id);
       const response = await zapierAxios.post(
-        "/suggestions/zaps",
+        "/zaps/suggestions",  
         {
           context: {
             title: sop.title,
