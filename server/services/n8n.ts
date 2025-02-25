@@ -17,7 +17,7 @@ axiosRetry(n8nAxios, {
   },
   retryCondition: (error) => {
     return axiosRetry.isNetworkOrIdempotentRequestError(error) || 
-           (error.response?.status >= 500) || false;
+           (error.response && error.response.status >= 500);
   }
 });
 
@@ -73,7 +73,7 @@ export class N8nService {
 
   constructor() {
     this.apiKey = process.env.N8N_API_KEY;
-    logger.info("[n8n] Initializing service with API key:", this.apiKey ? "Present" : "Missing");
+    logger.info("[n8n] Initializing service", { hasApiKey: !!this.apiKey });
   }
 
   private async checkConnection(): Promise<void> {
@@ -95,7 +95,7 @@ export class N8nService {
     } catch (error) {
       this.connected = false;
       if (axios.isAxiosError(error)) {
-        logger.error("[n8n] Connection failed:", {
+        logger.error("[n8n] Connection failed", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message
@@ -119,8 +119,7 @@ export class N8nService {
     }
 
     try {
-      logger.info("[n8n] Analyzing SOP for automation suggestions:", sop.id);
-
+      logger.info("[n8n] Analyzing SOP for automation suggestions", { sopId: sop.id });
       // Analyze each step for automation opportunities
       const stepAnalysis = sop.steps.map((step, index) => ({
         step,
@@ -157,7 +156,7 @@ export class N8nService {
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        logger.error("[n8n] Failed to analyze SOP:", {
+        logger.error("[n8n] Failed to analyze SOP", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message
@@ -173,8 +172,7 @@ export class N8nService {
     }
 
     try {
-      logger.info("[n8n] Creating automation workflow for SOP:", sop.id);
-
+      logger.info("[n8n] Creating automation workflow", { sopId: sop.id });
       // For now, we'll create a simulated workflow
       // In production, this would make actual API calls to n8n
       return {
@@ -189,7 +187,7 @@ export class N8nService {
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        logger.error("[n8n] Failed to create workflow:", {
+        logger.error("[n8n] Failed to create workflow", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message
