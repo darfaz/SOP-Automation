@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertAutomationSchema } from "@shared/schema";
-import type { Automation } from "@shared/schema";
+import type { Automation, SOP } from "@shared/schema";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,9 +28,19 @@ export default function Workflows() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  // Get the first SOP id for testing
-  const { data: sops } = useQuery({
+  // Query for SOPs
+  const { data: sops } = useQuery<SOP[]>({
     queryKey: ["/api/sops"],
+  });
+
+  // Query for suggested automations for the first SOP
+  const { data: suggestedAutomations, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["/api/automations/suggest", sops?.[0]?.id],
+    enabled: !!sops?.[0]?.id,
+  });
+
+  const { data: automations, isLoading } = useQuery<Automation[]>({
+    queryKey: ["/api/automations"],
   });
 
   const form = useForm({
@@ -43,10 +53,6 @@ export default function Workflows() {
       connectedApps: [],
       sopId: "", // Will be set when form opens
     },
-  });
-
-  const { data: automations, isLoading } = useQuery<Automation[]>({
-    queryKey: ["/api/automations"],
   });
 
   const createMutation = useMutation({
@@ -109,6 +115,35 @@ export default function Workflows() {
             </p>
           </div>
 
+          {/* Show suggestions if available */}
+          {suggestedAutomations && suggestedAutomations.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-xl font-semibold mb-3">Suggested Automations</h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {suggestedAutomations.map((suggestion: any) => (
+                  <Card key={suggestion.name}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{suggestion.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{suggestion.description}</p>
+                      <div className="mt-4">
+                        <div className="text-sm font-medium">Suggested Nodes</div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {suggestion.connectedApps.map((app: string) => (
+                            <Button key={app} variant="secondary" size="sm" disabled>
+                              {app}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button>
@@ -141,7 +176,7 @@ export default function Workflows() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>n8n Nodes</FormLabel>
-                        <Select 
+                        <Select
                           onValueChange={(value) => field.onChange([...field.value, value])}
                           value={field.value[field.value.length - 1] || ""}
                         >
