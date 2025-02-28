@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from openai import AsyncOpenAI
-from ..config import get_settings
+from backend.config import get_settings
 import json
 
 router = APIRouter()
