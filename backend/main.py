@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import sop
+from routes import sop
 
 # Initialize FastAPI app
 app = FastAPI(title="FinanceFlow API")
