@@ -1,0 +1,39 @@
+{
+  "name": "Invoice Processing Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "expression": "*/5"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getEmails",
+        "criteria": {
+          "from": ["invoices@*", "billing@*"],
+          "subject": ["invoice", "bill"]
+        }
+      },
+      "name": "Email",
+      "type": "n8n-nodes-base.emailReadImap",
+      "position": [
+        450,
+        300
+      ]
+    }
+    // Add more nodes for invoice processing
+  ]
+} 

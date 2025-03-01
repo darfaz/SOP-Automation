@@ -1,0 +1,123 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, staging ]
+  pull_request:
+    branches: [ main, staging ]
+
+jobs:
+  verify-structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check file structure
+        run: |
+          required_files=(
+            "backend/main.py"
+            "backend/config.py"
+            "backend/services/ai_service.py"
+            "backend/requirements.txt"
+            "frontend/package.json"
+            "frontend/src/components/layout/Header.tsx"
+            "Dockerfile"
+            ".gitignore"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "All required files present"
+
+  test:
+    needs: verify-structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio httpx
+          
+      - name: Run tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ENVIRONMENT: testing
+        run: pytest backend/tests/
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Build Docker image
+        run: |
+          docker build -t sop-automation .
+          docker run sop-automation python -c "import main; print('Import test successful')"
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+        
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            railway link ${{ secrets.RAILWAY_PROJECT_ID_PROD }}
+            railway up --service "api"
+          else
+            railway link ${{ secrets.RAILWAY_PROJECT_ID_STAGING }}
+            railway up --service "api"
+          fi 
+
+  monitoring:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health
+        run: |
+          HEALTH_CHECK_URL="${{ github.ref == 'refs/heads/main' && secrets.PROD_URL || secrets.STAGING_URL }}/health"
+          for i in {1..5}; do
+            response=$(curl -s $HEALTH_CHECK_URL)
+            if [[ $response == *"healthy"* ]]; then
+              echo "API is healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "API health check failed"
+          exit 1
+
+      - name: Check metrics
+        run: |
+          METRICS_URL="${{ github.ref == 'refs/heads/main' && secrets.PROD_URL || secrets.STAGING_URL }}/metrics"
+          response=$(curl -s $METRICS_URL)
+          if [[ $response == *"http_requests_total"* ]]; then
+            echo "Metrics are being collected"
+            exit 0
+          fi
+          echo "Metrics check failed"
+          exit 1 
