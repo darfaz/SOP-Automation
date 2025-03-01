@@ -17,4 +17,5 @@ COPY backend/ .
 EXPOSE 8000
 
 # Command to run the application - modify to use the correct module path
-CMD python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Simple approach - remove variable substitution and let Railway handle it
+CMD uvicorn main:app --host 0.0.0.0 --port 8000
