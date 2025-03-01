@@ -25,3 +25,13 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"message": "Welcome to FinanceFlow API"}
